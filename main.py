@@ -3,13 +3,15 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.services.brain_tumor_service import BrainTumorService
-from app.schemas.request_models import ImageRequest, ProcessingResponse
+from app.schemas.request_models import ImageRequest
 from app.utils.image_processing import (
     decode_image, encode_image, validate_image_size, draw_boxes
 )
 from app.config import settings
 import uvicorn
 import time
+from app.schemas.request_models import ImageRequest, ImageResponse
+
 
 # Create required directories
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -45,57 +47,36 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
+@app.get("/")
+async def root():
     return {
-        "status": "healthy",
-        "timestamp": time.time(),
-        "version": settings.VERSION
+        "message": "Medical Imaging API is running",
+        "environment": settings.RAILWAY_ENVIRONMENT,
+        "version": "1.0.0",
+        "docs_url": "/docs"
     }
 
-@app.post("/api/detect-brain-tumor", response_model=ProcessingResponse)
+@app.post("/api/detect-brain-tumor", response_model=ImageResponse)
 async def detect_brain_tumor(image_request: ImageRequest):
-    """
-    Process image for brain tumor detection
-    
-    Args:
-        image_request: ImageRequest object containing base64 encoded image
-        
-    Returns:
-        ProcessingResponse object with results and processed image
-    """
     try:
-        # Validate image size
-        if not validate_image_size(image_request.image_data):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Image size exceeds maximum allowed size of {settings.MAX_IMAGE_SIZE/1024/1024}MB"
-            )
-        
         # Decode the base64 image
         image = decode_image(image_request.image_data)
         
         # Process the image using the brain tumor service
         result = brain_tumor_service.detect_tumor(image)
         
-        if result["status"] == "error":
-            raise HTTPException(
-                status_code=500,
-                detail=result["error"]
-            )
-        
-        # Encode the processed image
-        result["processed_image"] = encode_image(result["processed_image"])
-        
-        return ProcessingResponse(**result)
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Prepare response
+        return ImageResponse(
+            processed_image=encode_image(result["processed_image"]),
+            detection_result={
+                "tumor_detected": result["tumor_detected"],
+                "confidence": result["confidence"]
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/process-bone-fracture", response_model=ProcessingResponse)
+@app.post("/api/process-bone-fracture", response_model=ImageResponse)
 async def process_bone_fracture(image_request: ImageRequest):
     """
     Process image with bone fracture bounding boxes
@@ -157,7 +138,7 @@ async def process_bone_fracture(image_request: ImageRequest):
             "status": "success"
         }
         
-        return ProcessingResponse(**result)
+        return ImageResponse(**result)
         
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

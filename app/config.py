@@ -1,30 +1,35 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load environment variables from .env file in development
+if os.path.exists('.env'):
+    load_dotenv()
 
 class Settings:
-    # Base settings
+    # Base Settings
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    API_V1_STR = "/api/v1"
     PROJECT_NAME = "Medical Imaging API"
-    VERSION = "1.0.0"
-    API_V1_STR = "/api"
     
-    # Environment settings
-    DEBUG = os.getenv("DEBUG", "False").lower() == "true"
-    MODEL_PATH = os.getenv("MODEL_PATH", "./models/brain_tumor_detector.h5")
-    UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
+    # Model Settings
+    MODEL_PATH = os.getenv("MODEL_PATH", str(BASE_DIR / "models/brain_tumor_detector.h5"))
+    UPLOAD_DIR = os.getenv("UPLOAD_DIR", str(BASE_DIR / "uploads"))
     
-    # Render specific
-    IS_PRODUCTION = os.getenv("RENDER", "False").lower() == "true"
-    PORT = int(os.getenv("PORT", "8000"))
-    HOST = "0.0.0.0" if IS_PRODUCTION else "127.0.0.1"
+    # Server Settings
+    PORT = int(os.getenv("PORT", 8000))
+    RAILWAY_ENVIRONMENT = os.getenv("RAILWAY_ENVIRONMENT", "development")
     
-    # Image settings
+    # Image Settings
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
     MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
     
-    # Model settings
-    TUMOR_CONFIDENCE_THRESHOLD = 0.5
-    FRACTURE_CONFIDENCE_THRESHOLD = 0.3
+    # Security Settings
+    CORS_ORIGINS = [
+        "http://localhost",
+        "http://localhost:8000",
+        "https://localhost",
+        "https://localhost:8000",
+    ]
 
 settings = Settings()

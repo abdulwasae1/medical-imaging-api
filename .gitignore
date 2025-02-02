@@ -4,6 +4,12 @@ __pycache__/
 .env
 .env.local
 .DS_Store
+*.h5
 .idea/
+.vscode/
 *.log
+temp/
+dist/
+build/
 /env
+env/
